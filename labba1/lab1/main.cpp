@@ -20,11 +20,11 @@ int main(int argc, char *argv[]) {
   w.show();
 
   //защита от отладки
- /* QProcess *satelliteProcess = new QProcess();
+  QProcess *satelliteProcess = new QProcess();
   int pid = QApplication::applicationPid();
   QStringList arguments = {QString::number(pid)};
   satelliteProcess->start("DebugProtector.exe", arguments);
-  bool protectorStarted = satelliteProcess->waitForStarted(1000); */
+  bool protectorStarted = satelliteProcess->waitForStarted(1000);
 
   // 1 Определение начала сегмента .text
   QWORD moduleBase = (QWORD)GetModuleHandleW(NULL); //начальный адрес приложенияв виртуальной памяти/
@@ -36,16 +36,16 @@ int main(int argc, char *argv[]) {
   PIMAGE_NT_HEADERS pINH = reinterpret_cast<PIMAGE_NT_HEADERS>(moduleBase+pIDH->e_lfanew);
   QWORD size_of_text = pINH->OptionalHeader.SizeOfCode;
   //размер сегмента .text
-  //qDebug() << "size_of_text = " << size_of_text;
+  qDebug() << "size_of_text = " << size_of_text;
 
   // 3 Подсчет хэша и его шифрование
   QByteArray text_segment_contents = QByteArray((char*)text_segment_start, size_of_text);
   QByteArray hash = QCryptographicHash::hash((text_segment_contents),QCryptographicHash::Sha256).toBase64();
-  //qDebug() << "text_segment_contents = " << Qt::hex << text_segment_contents.first(100);
+  qDebug() << "text_segment_contents = " << Qt::hex << text_segment_contents.first(100);
   qInfo() << "hash = " << hash; //вывод хэша
 
   // 4 Сравнение хэша полученного на прошлых этапах с эталонным
-  const QByteArray hash0_base64 = QByteArray("dXjc3W6Hc0GXPFzME1Sx84fiKz9IylbMPpKsnClTaoA=");
+  const QByteArray hash0_base64 = QByteArray("cILVKjtEdbOub76l1dWezu5cBYib1qIlWdTzgXepWrQ=");
   bool checkresult =(hash==hash0_base64);
   qDebug() << "checkresult = " << checkresult; //результат сравнения хэша
 
