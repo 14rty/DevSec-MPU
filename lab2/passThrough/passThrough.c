@@ -1,4 +1,4 @@
-/*++
+п»ї/*++
 
 Copyright (c) 1999 - 2002  Microsoft Corporation
 
@@ -791,80 +791,88 @@ Return Value:
     //code here
 
 
-    NTSTATUS status;
-
-    PFLT_FILE_NAME_INFORMATION NameInfo = NULL;// Объявление структуры
+    NTSTATUS status; //РѕР±СЉСЏРІР»СЏРµРј РїРµСЂРµРјРµРЅРЅСѓСЋ СЃС‚Р°С‚СѓСЃР°
+    PFLT_FILE_NAME_INFORMATION NameInfo = NULL;
     status = FltGetFileNameInformation(
         Data,
-        FLT_FILE_NAME_NORMALIZED | FLT_FILE_NAME_QUERY_DEFAULT,
-        &NameInfo
-    );// Парсинг имени файла на составляющие
+        FLT_FILE_NAME_NORMALIZED |
+        FLT_FILE_NAME_QUERY_DEFAULT,
+        &NameInfo); //РїРµСЂРµРґР°РµРј РІ РЅРµР№РјРРЅС„Рѕ СЃСЃС‹Р»РєСѓ РЅР° СЃС‚СЂСѓРєС‚СѓСЂСѓ
 
-    UNICODE_STRING requiredExtension = RTL_CONSTANT_STRING(L"boom");// Перевод расширения в UNICODE_STRING
-    if (NT_SUCCESS(status)) {
-        if (RtlEqualUnicodeString(&requiredExtension, &NameInfo->Extension, FALSE)) {
-            if (Data->Iopb->MajorFunction == IRP_MJ_READ) {//проверка на событие записи
+    UNICODE_STRING required_extension;
+    wchar_t* x = L".test";
+    RtlInitUnicodeString(&required_extension, x);
 
-                DbgPrint("read\n");
+    if (NT_SUCCESS(status))
+    {
+        PWSTR extensionStart = wcsrchr(NameInfo->Name.Buffer, L'.');
+        if (extensionStart != NULL)
+        {
+            UNICODE_STRING extension;
 
-                if (strlen((char*)Data->Iopb->Parameters.Read.ReadBuffer) != 0) {
-                    DbgPrint("Its decipher\n");
+            RtlInitUnicodeString(&extension, extensionStart);
+
+            if (RtlEqualUnicodeString(&required_extension, &extension, FALSE))
+            {
+                DbgPrint("______Extension OK______");
+
+                if (Data->Iopb->MajorFunction == IRP_MJ_WRITE)
+                {
+                    DbgPrint("______Write OK______");
+
                     uint8_t hexarray[1024];
                     memset(hexarray, 0, 1024);
-                    for (int i = 0; i < strlen((char*)Data->Iopb->Parameters.Read.ReadBuffer); i++) {
-                        hexarray[i] = (uint8_t)((char*)Data->Iopb->Parameters.Read.ReadBuffer)[i];//чтение из буфера
-                    };
 
-                    unsigned char k[] = "1234567890ABCDEF";
-                    uint8_t* key = (uint8_t*)k;//приведение ключа к нужному формату
-                    uint8_t iv[] = { 0x75,0x52,0x5f,0x69,0x6e,0x74,0x65,0x72,0x65,0x73,0x74,0x69,0x6e,0x67,0x21,0x21 };//инициализирующий вектор
+                    for (int i = 0; i < strlen(Data->Iopb->Parameters.Write.WriteBuffer); i++)
+                    {
+                        hexarray[i] = (uint8_t)((char*)Data->Iopb->Parameters.Write.WriteBuffer)[i];
+                    }
 
-                    struct AES_ctx ctx; //создание объекта шифра (контекст, который будет хранить ключ и инициализирующий вектор)
+                    unsigned char k[] = "lmfsB4MTvjLmyO3Y";    //16 Р±РёС‚РѕРІ
+                    uint8_t* key = (uint8_t*)k;
+                    uint8_t iv[] = { 0x75, 0x52, 0x5f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x21, 0x21 };
 
-                    AES_init_ctx_iv(&ctx, key, iv); //инициализация структуры
-                    AES_CBC_decrypt_buffer(&ctx, hexarray, 1024); //зашифровываем буфер (передаем контекст, буфер и длину буфера)
-                    DbgPrint("Result:");
-                    DbgPrint(hexarray);
+                    struct AES_ctx ctx;
 
-                    for (int i = 0; i < strlen((char*)Data->Iopb->Parameters.Read.ReadBuffer); i++) {
-                        ((char*)Data->Iopb->Parameters.Write.WriteBuffer)[i] = hexarray[i]; //запись обратно в буфер вместо старых данных
+                    AES_init_ctx_iv(&ctx, key, iv);
+                    AES_CBC_encrypt_buffer(&ctx, hexarray, 1024);
+                    memcpy(Data->Iopb->Parameters.Write.WriteBuffer, hexarray, 1024);
+
+                    DbgPrint("Hexarray:	%s\n", hexarray);
+                    DbgPrint("Write Buffer: %s\n", (char*)Data->Iopb->Parameters.Write.WriteBuffer);
+                }
+                else if (Data->Iopb->MajorFunction == IRP_MJ_READ)
+                {
+                    DbgPrint("______Read OK______");
+                    //
+
+                    if (strlen((char*)Data->Iopb->Parameters.Read.ReadBuffer) != 0)
+                    {
+                        uint8_t hexarray[1024];
+                        memset(hexarray, 0, 1024);
+                        for (int i = 0; i < strlen(Data->Iopb->Parameters.Read.ReadBuffer); i++)
+                        {
+                            hexarray[i] = (uint8_t)((char*)Data->Iopb->Parameters.Read.ReadBuffer)[i];
+                        }
+
+                        unsigned char k[] = "lmfsB4MTvjLmyO3Y";    //16 Р±РёС‚РѕРІ
+                        uint8_t* key = (uint8_t*)k;
+                        uint8_t iv[] = { 0x75, 0x52, 0x5f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x21, 0x21 };
+
+                        struct AES_ctx ctx;
+
+                        AES_init_ctx_iv(&ctx, key, iv);
+                        AES_CBC_decrypt_buffer(&ctx, hexarray, 1024);
+
+                        for (int i = 0; i < strlen((char*)Data->Iopb->Parameters.Read.ReadBuffer); i++)
+                        {
+                            ((char*)Data->Iopb->Parameters.Read.ReadBuffer)[i] = hexarray[i];
+                        }
                     }
                 }
             }
-
-            else if (Data->Iopb->MajorFunction == IRP_MJ_WRITE) { //проверка на событие чтения
-
-                DbgPrint("write\n");
-
-                if (Data->Iopb->Parameters.Write.WriteBuffer) {
-                    DbgPrint("Its cipher\n");
-                    uint8_t hexarray[1024];
-                    memset(hexarray, 0, 1024);
-                    for (int i = 0; i < strlen(Data->Iopb->Parameters.Write.WriteBuffer); i++) {
-                        hexarray[i] = (uint8_t)((char*)Data->Iopb->Parameters.Write.WriteBuffer)[i]; //чтение из буфера
-                    };
-
-                    unsigned char k[] = "1234567890ABCDEF";
-                    uint8_t* key = (uint8_t*)k; //приведение ключа к нужному формату
-                    uint8_t iv[] = { 0x75,0x52,0x5f,0x69,0x6e,0x74,0x65,0x72,0x65,0x73,0x74,0x69,0x6e,0x67,0x21,0x21 }; //инициализирующий вектор
-
-                    struct AES_ctx ctx;  //создание объекта шифра (контекст, который будет хранить ключ и инициализирующий вектор)
-
-                    AES_init_ctx_iv(&ctx, key, iv); //инициализация структуры
-                    AES_CBC_encrypt_buffer(&ctx, hexarray, 1024); //расшифровываем буфер (передаем контекст, буфер и длину буфера)
-
-                    for (int i = 0; i < 1024; i++) {
-                        ((char*)Data->Iopb->Parameters.Write.WriteBuffer)[i] = hexarray[i];//запись обратно в буфер вместо старых данных
-                    }
-                };
-            }
-
         }
     }
-
-
-
-
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
